@@ -1,19 +1,19 @@
-# Shadow Lock
+# Delegate Lock
 
 ## RFC
 
-`Shadow Lock` is a generic lock in order to create a proxy ownership control to specified cell’s type or lock.
+`Delegate Lock` is a generic lock in order to create a proxy ownership control to specified cell’s type or lock.
 
-The core concept of `Shadow Lock` is to simplify the process of composing different cells on-chain. Also provides a generic way for ownership delegating on-chain.
+The core concept of `Delegate Lock` is to simplify the process of composing different cells on-chain. Also provides a generic way for ownership delegating on-chain.
 
 ### Data Structure
 
-A cell that applies `Shadow Lock` should like following:
+A cell that applies `Delegate Lock` should like following:
 
 ```yaml
 Lock:
   hash_type: "data1"
-  code_hash: SHADOW_LOCK_CODE_HASH
+  code_hash: Delegate_LOCK_CODE_HASH
   args: <mode flags, 1byte><delegate script hash, 32 bytes>[<delegate data hash, 32bytes,optional>]
 ```
 
@@ -30,11 +30,11 @@ mode flags is a bitset flag map that toggles different features. Different featu
 
 ### Operations
 
-This section describes operations and restrictions in Shadow Lock implementation
+This section describes operations and restrictions in Delegate Lock implementation
 
 #### Delegate/Compose
 
-Delegate/compose is setting one or more cell’s lock from other lock to Shadow Lock.
+Delegate/compose is setting one or more cell’s lock from other lock to Delegate Lock.
 
 ```yaml
 // Delegate/Compose
@@ -53,7 +53,7 @@ Outputs:
     Type: <USER_DEFINED>
     Lock:
       hash_type: "data1"
-      code_hash: SHADOW_LOCK_CODE_HASH
+      code_hash: Delegate_LOCK_CODE_HASH
       args: <0b00000111, 1byte><TYPE_HASH_1, 32bytes>
   Delegate Cell:
     Type: <USER_DEFINED> # hash = TYPE_HASH_1
@@ -63,7 +63,7 @@ Outputs:
 
 #### Decompose/Unlock
 
-Decompose/Unlock is setting one or more cell’s lock from Shadow Lock to others.
+Decompose/Unlock is setting one or more cell’s lock from Delegate Lock to others.
 
 ```yaml
 // Delegate/Compose
@@ -73,7 +73,7 @@ Inputs:
     Type: <USER_DEFINED>
     Lock:
       hash_type: "data1"
-      code_hash: SHADOW_LOCK_CODE_HASH
+      code_hash: Delegate_LOCK_CODE_HASH
       args: <0b00000111, 1byte><TYPE_HASH_1, 32bytes>
   Delegate Cell:
     Type: <USER_DEFINED> # hash = TYPE_HASH_1
@@ -92,5 +92,5 @@ Outputs:
 
 Limitation rules are described as below:
 
-- The delegated cell must be present in inputs together while unlocking a `Shadow Lock`
-- If `self destroy` mode flag it set to be true, then the Cell using shadow lock must be destroyed while unlock
+- The delegated cell must be present in inputs together while unlocking a `Delegate Lock`
+- If `self destroy` mode flag it set to be true, then the Cell using Delegate lock must be destroyed while unlock
