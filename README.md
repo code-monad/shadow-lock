@@ -1,4 +1,4 @@
-# Shadow Lock: Generic Ownership Delegate/Proxy Lock
+# Delegate Lock: Generic Ownership Delegate/Proxy Lock
 
 This repo contains the contract implementation of `Shadow Lock`.
 
