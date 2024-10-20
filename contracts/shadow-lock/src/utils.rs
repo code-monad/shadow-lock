@@ -1,13 +1,12 @@
+use crate::errors::ShadowLockError;
+use alloc::{vec, vec::Vec};
 use ckb_std::{
     ckb_constants::Source,
-    high_level::{
-        find_cell_by_data_hash, load_cell_data_hash, load_cell_lock_hash, load_cell_type_hash,
-        QueryIter,
-    },
+    debug,
+    high_level::{load_cell_data_hash, load_cell_lock_hash, load_cell_type_hash, QueryIter},
 };
 
-use crate::errors::ShadowLockError;
-
+#[derive(Debug)]
 pub struct FeatureFlags {
     pub delegate_script_type: bool,
     pub forbid_trade: bool,
@@ -42,6 +41,7 @@ impl FeatureFlags {
     }
 }
 
+#[derive(Debug)]
 pub struct UnpackedShadowlockArgs {
     pub flags: FeatureFlags,
     pub ref_hash: [u8; 32],
@@ -75,35 +75,48 @@ pub fn check_input_output_contain_same_cell(
     source: Source,
     check_data: bool,
     check_lock: bool,
-) -> Result<Option<usize>, ShadowLockError> {
+) -> Result<Vec<usize>, ShadowLockError> {
+    debug!("input_index: {input_index}, source: {:?}", source);
     let input_type_hash = load_cell_type_hash(input_index, source)?;
 
     let data_position = if check_data {
         let data_hash = load_cell_data_hash(input_index, source)?;
-        find_cell_by_data_hash(&data_hash, Source::Output)?
+        QueryIter::new(load_cell_data_hash, Source::Output)
+            .enumerate()
+            .filter(|(_, x)| x == &data_hash)
+            .map(|(position, _)| position)
+            .collect::<Vec<usize>>()
     } else {
-        None
+        vec![]
     };
 
     let lock_position = if check_lock {
         let lock_hash = load_cell_lock_hash(input_index, source)?;
-        QueryIter::new(load_cell_lock_hash, Source::Output).position(|x| x == lock_hash)
+        QueryIter::new(load_cell_lock_hash, Source::Output)
+            .enumerate()
+            .filter(|(_, x)| x == &lock_hash)
+            .map(|(position, _)| position)
+            .collect::<Vec<usize>>()
     } else {
-        None
+        vec![]
     };
 
-    let type_position =
-        QueryIter::new(load_cell_type_hash, Source::Output).position(|x| x == input_type_hash);
+    let found_same_cell = QueryIter::new(load_cell_type_hash, Source::Output)
+        .enumerate()
+        .filter(|(_, x)| x == &input_type_hash)
+        .filter(|(tp, _)| {
+            let data_matches = !check_data || data_position.contains(&tp);
+            let lock_matches = !check_lock || lock_position.contains(&tp);
+            debug!("index: {tp}, data_matches: {data_matches}, lock_matches: {lock_matches}");
+            data_matches && lock_matches
+        })
+        .map(|(same_index, _)| same_index)
+        .collect::<Vec<usize>>();
 
     // Now check if all positions (type, lock, data) are Some and are equal
-    if let (Some(tp), Some(dp), Some(lp)) = (type_position, data_position, lock_position) {
-        if tp == dp && dp == lp {
-            return Ok(Some(tp)); // Return the position if all are equal
-        }
-    }
 
     // Return None if any of the checks failed or if positions are not equal
-    Ok(None)
+    Ok(found_same_cell)
 }
 
 pub fn delegate_data_owner_check(
@@ -111,8 +124,10 @@ pub fn delegate_data_owner_check(
     index: usize,
     source: Source,
 ) -> Result<bool, ShadowLockError> {
-    Ok(delegate_data_hash.is_some_and(|delegate_data_hash| {
-        load_cell_data_hash(index, source)
-            .is_ok_and(|cell_data_hash| cell_data_hash == delegate_data_hash)
-    }))
+    if delegate_data_hash.is_some() {
+        let cell_data_hash = load_cell_data_hash(index, source)?;
+        Ok(cell_data_hash == delegate_data_hash.unwrap())
+    } else {
+        Ok(true)
+    }
 }
